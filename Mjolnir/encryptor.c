@@ -103,53 +103,6 @@ void init_IV()
 int sz;
 void fencrypt(char* read, char* write, const unsigned char* enc_key)
 { 
-	// if(!RAND_bytes(iv, AES_BLOCK_SIZE))
-	// {
-	// 	fprintf(stderr, "Could not create random bytes.");
-	// 	exit(1);    
-	// }
-
-	//readFile = fopen(read,"rb"); // The b is required in windows.
-	// writeFile = fopen(write,"wb");
-	
-	// if(readFile==NULL) 	
-	// {
-	// 	fprintf(stderr, "Read file is null."); 
-	// 	exit(1);
-	// }
-	
-	// if(writeFile==NULL)
-	// {
-	// 	fprintf(stderr, "Write file is null."); 
-	// 	exit(1);
-	// }
-	
-	// fwrite(iv, 1, 8, writeFile); // IV bytes 1 - 8
- //    fwrite("\0\0\0\0\0\0\0\0", 1, 8, writeFile); // Fill the last 4 with null bytes 9 - 16
- //    printf("IV Write: %s\n", iv);
-	// //Initializing the encryption KEY
- //    if (AES_set_encrypt_key(enc_key, 128, &key) < 0)
- //    {
- //    	fprintf(stderr, "Could not set encryption key.");
- //    	exit(1); 
- //    }
-
-	// init_ctr(&state, iv); //Counter call
-	// //Encrypting Blocks of 16 bytes and writing the output.txt with ciphertext	
-	// while(1) 	
-	// {
-	// 	bytes_read = fread(indata, 1, AES_BLOCK_SIZE, readFile); 
-	// 	CRYPTO_ctr128_encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
-
-	// 	bytes_written = fwrite(outdata, 1, bytes_read, writeFile); 
-	// 	if (bytes_read < AES_BLOCK_SIZE)
-	// 	{
-	// 		break;
-	// 	}
-	// }
-	
-	// fclose(writeFile);
-	// fclose(readFile);
 	if (AES_set_encrypt_key(enc_key, 128, &key) < 0)
 	{
 		fprintf(stderr, "Could not set encryption key.");
@@ -184,7 +137,7 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 	{
 		MPI_File_read_at(readFile, ((rank)*partition*AES_BLOCK_SIZE)+i, indata, AES_BLOCK_SIZE, MPI_CHAR, &status);
 		//printf("%s", indata);
-		CRYPTO_ctr128_encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
+		CRYPTO_ctr128_encrypt(indata, outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
 		
 		//AES_ctr128_encrypt(indata, outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num);
 		printf("ivec : %s\n", state.ivec);
