@@ -44,17 +44,6 @@ void CRYPTO_ctr128_encrypt(const unsigned char *in, unsigned char *out,
 	}
 	*num=n;
 }
-static void ctr96_inc(unsigned char *counter) {
-	u32 n=12;
-	u8  c;
-	do {
-		--n;
-		c = counter[n];
-		++c;
-		counter[n] = c;
-		if (c) return;
-	} while (n);
-}
 struct ctr_state 
 { 
 	unsigned char ivec[AES_BLOCK_SIZE];	 
@@ -77,10 +66,8 @@ int init_ctr(struct ctr_state *state, const unsigned char iv[16])
      * first call. */
 	state->num = 0;
 	memset(state->ecount, 0, AES_BLOCK_SIZE);
-
     /* Initialise counter in 'ivec' to 0 */
 	memset(state->ivec + 8, 0, 8);
-
     /* Copy IV into 'ivec' */
 	memcpy(state->ivec, iv, 8);
 }
@@ -159,16 +146,13 @@ void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 		fprintf(stderr, "Could not set decryption key.");
 		exit(1);
 	}
-
 	init_ctr(&state, iv);//Counter call
 	//Encrypting Blocks of 16 bytes and writing the output.txt with ciphertext
 	printf("IV Read: %s\n", iv);		 
 	while(1) 	
 	{
 		bytes_read = fread(indata, 1, AES_BLOCK_SIZE, readFile);	
-        //printf("%i\n", state.num);
 		CRYPTO_ctr128_encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
-
 		bytes_written = fwrite(outdata, 1, bytes_read, writeFile); 
 		if (bytes_read < AES_BLOCK_SIZE) 
 		{
