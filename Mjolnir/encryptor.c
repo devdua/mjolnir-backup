@@ -123,7 +123,6 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 	for(i = 0; i < partition*AES_BLOCK_SIZE; i += AES_BLOCK_SIZE)
 	{
 		MPI_File_read_at(readFile, ((rank)*partition*AES_BLOCK_SIZE)+i, indata, AES_BLOCK_SIZE, MPI_CHAR, &status);
-		//printf("%s", indata);
 		CRYPTO_ctr128_encrypt(indata, outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
 		printf("ivec : %s\n", state.ivec);
 		MPI_File_write_at(writeFile, ((rank)*partition*AES_BLOCK_SIZE)+i, outdata, AES_BLOCK_SIZE, MPI_CHAR, &status);
