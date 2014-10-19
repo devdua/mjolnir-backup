@@ -17,7 +17,8 @@ struct ctr_state
 	unsigned char ivec[AES_BLOCK_SIZE];	 
 	unsigned int num; 
 	unsigned char ecount[AES_BLOCK_SIZE]; 
-};/*
+};
+/*
 static void ctr128_inc(unsigned char *counter, int rank) {
 	u32 n=16;
 	u8  c;
@@ -93,7 +94,6 @@ unsigned char indata[AES_BLOCK_SIZE];
 unsigned char outdata[AES_BLOCK_SIZE];
 unsigned char iv[AES_BLOCK_SIZE];
 static struct ctr_state state;	 
-
 int init_ctr(struct ctr_state *state, const unsigned char iv[16])
 {		 
 	/* aes_ctr128_encrypt requires 'num' and 'ecount' set to zero on the
