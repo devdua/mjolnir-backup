@@ -17,7 +17,7 @@ struct ctr_state
 	unsigned char ivec[AES_BLOCK_SIZE];	 
 	unsigned int num; 
 	unsigned char ecount[AES_BLOCK_SIZE]; 
-}; 
+};/*
 static void ctr128_inc(unsigned char *counter, int rank) {
 	u32 n=16;
 	u8  c;
@@ -30,7 +30,7 @@ static void ctr128_inc(unsigned char *counter, int rank) {
 		if (c) return;
 	} while (n);
 }
-void crypto_ctr128_encrypt(const unsigned char *in, 
+void encrypt(const unsigned char *in, 
 	unsigned char *out,
 	size_t len, const void *key,
 	unsigned char ivec[16], unsigned char ecount_buf[16],
@@ -51,41 +51,41 @@ void crypto_ctr128_encrypt(const unsigned char *in,
 		n = (n+size+rank) % 16;
 	}
 	*num=n;
-}
-// static void ctr128_inc(unsigned char *counter, int rank) {
-// 	u32 n=16;
-// 	u8  c;
+}*/
+static void ctr128_inc(unsigned char *counter, int rank) {
+	u32 n=16;
+	u8  c;
 
-// 	do {
-// 		--n;
-// 		c = counter[n];
-// 		c = c + 1;
-// 		counter[n] = c;
-// 		if (c) return;
-// 	} while (n);
-// }
-// void crypto_ctr128_encrypt(const unsigned char *in, 
-// 	unsigned char *out,
-// 	size_t len, const void *key,
-// 	unsigned char ivec[16], unsigned char ecount_buf[16],
-// 	unsigned int *num, block128_f block, int rank)
-// {
-// 	unsigned int n;
-// 	size_t l=0;//16 bit int = 0L
-// 	assert(in && out && key && ecount_buf && num);
-// 	assert(*num < 16);
-// 	n = *num;
-// 	while (l<len) {
-// 		if (n==0) {
-// 			(*block)(ivec, ecount_buf, key);
-// 			ctr128_inc(ivec,rank);
-// 		}
-// 		out[l] = in[l] ^ ecount_buf[n];
-// 		++l;
-// 		n = (n+1) % 16;
-// 	}
-// 	*num=n;
-// }
+	do {
+		--n;
+		c = counter[n];
+		c = c + 1;
+		counter[n] = c;
+		if (c) return;
+	} while (n);
+}
+void encrypt(const unsigned char *in, 
+	unsigned char *out,
+	size_t len, const void *key,
+	unsigned char ivec[16], unsigned char ecount_buf[16],
+	unsigned int *num, block128_f block, int rank)
+{
+	unsigned int n;
+	size_t l=0;//16 bit int = 0L
+	assert(in && out && key && ecount_buf && num);
+	assert(*num < 16);
+	n = *num;
+	while (l<len) {
+		if (n==0) {
+			(*block)(ivec, ecount_buf, key);
+			ctr128_inc(ivec,rank);
+		}
+		out[l] = in[l] ^ ecount_buf[n];
+		++l;
+		n = (n+1) % 16;
+	}
+	*num=n;
+}
 MPI_File readFile, writeFile;
 AES_KEY key;
 MPI_Status status; 
@@ -158,8 +158,8 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 	MPI_File_open(MPI_COMM_WORLD,write,MPI_MODE_CREATE|MPI_MODE_WRONLY,MPI_INFO_NULL,&writeFile);
 	//init_ctr(&state, iv); //Counter call
 	int partition = ((sz/AES_BLOCK_SIZE)/size);
+	int blockOffset = partition*AES_BLOCK_SIZE;
 	printf("PARTITION SIZE : %d\n", partition);
-	
 	int j;
 	// if(rank != 0)
 	// {
@@ -167,12 +167,12 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 	// 	fread(iv, 1, AES_BLOCK_SIZE, f);
 	// 	fclose(f);
 	// }
-	for(i = 0; i < partition*AES_BLOCK_SIZE; i += AES_BLOCK_SIZE)
+	for(i = 0; i < blockOffset; i += AES_BLOCK_SIZE)
 	{
-		MPI_File_read_at(readFile, ((rank)*partition*AES_BLOCK_SIZE)+i, indata, AES_BLOCK_SIZE, MPI_CHAR, &status);
-		crypto_ctr128_encrypt(indata, outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt,rank);
+		MPI_File_read_at(readFile, ((rank)*blockOffset)+i, indata, AES_BLOCK_SIZE, MPI_CHAR, &status);
+		encrypt(indata, outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt,rank);
 		printf("ivec : %s, ecount : %s\n", state.ivec, state.ecount);
-		MPI_File_write_at(writeFile, ((rank)*partition*AES_BLOCK_SIZE)+i, outdata, AES_BLOCK_SIZE, MPI_CHAR, &status);
+		MPI_File_write_at(writeFile, ((rank)*blockOffset)+i, outdata, AES_BLOCK_SIZE, MPI_CHAR, &status);
 	}
 	MPI_File_close(&writeFile);
 	MPI_File_close(&readFile);
@@ -198,7 +198,7 @@ void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 	while(1) 	
 	{
 		bytes_read = fread(indata, 1, AES_BLOCK_SIZE, readFile);	
-		CRYPTO_ctr128_encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
+		encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
 		bytes_written = fwrite(outdata, 1, bytes_read, writeFile); 
 		if (bytes_read < AES_BLOCK_SIZE) 
 		{
