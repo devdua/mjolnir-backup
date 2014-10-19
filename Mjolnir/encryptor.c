@@ -11,22 +11,23 @@
 #include <math.h>
 #include "mpi.h"
 #include <openssl/modes.h>
-static void ctr128_inc(unsigned char *counter) {
+int rank, size, bufsize, nints, bytes_read, bytes_written;	 
+static void ctr128_inc(unsigned char *counter, int rank) {
 	u32 n=16;
 	u8  c;
 
 	do {
 		--n;
 		c = counter[n];
-		++c;
+		c = c + rank + size;
 		counter[n] = c;
 		if (c) return;
 	} while (n);
 }
-void CRYPTO_ctr128_encrypt(const unsigned char *in, unsigned char *out,
+void crypto_ctr128_encrypt(const unsigned char *in, unsigned char *out,
 	size_t len, const void *key,
 	unsigned char ivec[16], unsigned char ecount_buf[16],
-	unsigned int *num, block128_f block)
+	unsigned int *num, block128_f block, int rank)
 {
 	unsigned int n;
 	size_t l=0;
@@ -36,11 +37,11 @@ void CRYPTO_ctr128_encrypt(const unsigned char *in, unsigned char *out,
 	while (l<len) {
 		if (n==0) {
 			(*block)(ivec, ecount_buf, key);
-			ctr128_inc(ivec);
+			ctr128_inc(ivec,rank);
 		}
 		out[l] = in[l] ^ ecount_buf[n];
 		++l;
-		n = (n+1) % 16;
+		n = (n+size+rank) % 16;
 	}
 	*num=n;
 }
@@ -54,7 +55,6 @@ struct ctr_state
 MPI_File readFile, writeFile;
 AES_KEY key;
 MPI_Status status; 
-int rank, size, bufsize, nints, bytes_read, bytes_written;	 
 unsigned char indata[AES_BLOCK_SIZE]; 
 unsigned char outdata[AES_BLOCK_SIZE];
 unsigned char iv[AES_BLOCK_SIZE];
@@ -123,14 +123,14 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 	for(i = 0; i < partition*AES_BLOCK_SIZE; i += AES_BLOCK_SIZE)
 	{
 		MPI_File_read_at(readFile, ((rank)*partition*AES_BLOCK_SIZE)+i, indata, AES_BLOCK_SIZE, MPI_CHAR, &status);
-		CRYPTO_ctr128_encrypt(indata, outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
+		crypto_ctr128_encrypt(indata, outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt,rank);
 		printf("ivec : %s\n", state.ivec);
 		MPI_File_write_at(writeFile, ((rank)*partition*AES_BLOCK_SIZE)+i, outdata, AES_BLOCK_SIZE, MPI_CHAR, &status);
 	}
 	MPI_File_close(&writeFile);
 	MPI_File_close(&readFile);
 }
-
+/*
 void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 {	
 	MPI_Init(NULL,NULL);
@@ -162,7 +162,7 @@ void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 	fclose(readFile); 
 	MPI_Finalize();
 }
-
+*/
 int main(int argc, char *argv[])
 {
 	fencrypt("lorem.txt", "enced.txt", (unsigned const char*)"1234567812345678");
