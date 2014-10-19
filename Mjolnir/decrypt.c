@@ -95,9 +95,9 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 {	
 
-	readFile=fopen("loremenc.txt","rb"); // The b is required in windows.
+	readFile=fopen("enced.txt","rb"); // The b is required in windows.
 	FILE *ivr = fopen("iv.txt", "r");
-	writeFile=fopen("loremdecrypted.txt","wb");
+	writeFile=fopen("unenced.txt","wb");
 	
 	if(readFile==NULL)
 	{
@@ -112,7 +112,7 @@ void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 	}
 	
 	fread(iv, 1, AES_BLOCK_SIZE, ivr); 
-
+	fclose(ivr);
 	//Initializing the encryption KEY
 	if (AES_set_encrypt_key(enc_key, 128, &key) < 0)
 	{
