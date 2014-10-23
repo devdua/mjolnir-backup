@@ -76,7 +76,6 @@ void fencrypt(const unsigned char* enc_key)
 		FILE *f = fopen("iv_slaves.txt", "r");
 		fread(iv, 1, AES_BLOCK_SIZE, f);
 		fclose(f);
-		init_ctr(&state, iv); 
 	}
 	for(i = 0; i < partition*AES_BLOCK_SIZE; i += AES_BLOCK_SIZE)
 	{
