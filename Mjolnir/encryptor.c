@@ -152,7 +152,7 @@ void init_IV()
     // fwrite(iv, 1, AES_BLOCK_SIZE, wFile);
     // fclose(wFile);
 }
-int sz;
+unsigned long int sz;
 void fencrypt(char* read, char* write, const unsigned char* enc_key)
 { 
 	if (AES_set_encrypt_key(enc_key, 128, &key) < 0)
@@ -160,7 +160,7 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 		fprintf(stderr, "Could not set encryption key.");
 		exit(1); 
 	}
-	FILE *fp = fopen("lorem.txt", "r");
+	FILE *fp = fopen(read, "r");
 	fseek(fp, 0L, SEEK_END);
 	sz = ftell(fp);
 	fclose(fp);
@@ -196,25 +196,25 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 		MPI_Recv(&state, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		MPI_Recv(&iv, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}*/
-	MPI_File_open(MPI_COMM_WORLD,"lorem.txt",MPI_MODE_RDONLY,MPI_INFO_NULL,&readFile);
+	MPI_File_open(MPI_COMM_WORLD,read,MPI_MODE_RDONLY,MPI_INFO_NULL,&readFile);
 	//MPI_File_open(MPI_COMM_WORLD,fname,MPI_MODE_CREATE|MPI_MODE_WRONLY,MPI_INFO_NULL,&writeFile);
 	//init_ctr(&state, iv); //Counter call
 	float blocksize = sz/size;
 	//int numblocks = blocks*AES_BLOCK_SIZE;
 	if (rank == 0)
 	{
-		printf("Size of file : %d\n", sz);
+		printf("Size of file : %ld\n", sz);
 	}
 	printf("Blocksize : %f, numblocks : %d\n", blocksize, size);
 	init_IV();
 	init_ctr(&state, iv);
-	int partition = ((sz/AES_BLOCK_SIZE)/size);
+	unsigned long int partition = ((sz/AES_BLOCK_SIZE)/size);
 	int blockOffset = partition*AES_BLOCK_SIZE;
 	//printf("PARTITION SIZE : %d\n", partition);
 	int j;
 	MPI_File_read_at(readFile,(rank*blocksize),writeBuffer,(blocksize),MPI_CHAR,&status);
 	//strcat(writeBuffer,"\0");
-	int b = 0;
+	unsigned long int b = 0;
 	for (b = 0; b < blocksize; b += AES_BLOCK_SIZE)
 	{
 	encrypt(substring(writeBuffer,b,AES_BLOCK_SIZE), outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt,rank);
@@ -238,14 +238,26 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 	}*/
 	//MPI_File_close(&writeFile);
 	MPI_File_close(&readFile);
-}
-/*
-void fdecrypt(char* read, char* write, const unsigned char* enc_key)
+}/*
+void fdecrypt(const unsigned char* enc_key)
 {	
-	MPI_Init(NULL,NULL);
-	FILE *readFile=fopen(read,"rb"); // The b is required in windows.
-	FILE *writeFile=fopen(write,"wb");
-	FILE *ivr = fopen("iv.txt", "r");	
+	FILE *readFile, *writeFile;
+	readFile=fopen("block1.txt","rb"); // The b is required in windows.
+	FILE *ivr = fopen("iv1.txt", "r");
+	writeFile=fopen("unenced.txt","wb");
+	
+	if(readFile==NULL)
+	{
+		fprintf(stderr,"Read file is null."); 
+		exit(1);
+	}
+	
+	if(writeFile==NULL)	
+	{
+		fprintf(stderr, "Write file is null."); 
+		exit(1);
+	}
+	
 	fread(iv, 1, AES_BLOCK_SIZE, ivr); 
 	fclose(ivr);
 	//Initializing the encryption KEY
@@ -254,13 +266,16 @@ void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 		fprintf(stderr, "Could not set decryption key.");
 		exit(1);
 	}
+
 	init_ctr(&state, iv);//Counter call
 	//Encrypting Blocks of 16 bytes and writing the output.txt with ciphertext
 	printf("IV Read: %s\n", iv);		 
 	while(1) 	
 	{
 		bytes_read = fread(indata, 1, AES_BLOCK_SIZE, readFile);	
-		encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt);
+        //printf("%i\n", state.num);
+		AES_ctr128_encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num);
+
 		bytes_written = fwrite(outdata, 1, bytes_read, writeFile); 
 		if (bytes_read < AES_BLOCK_SIZE) 
 		{
@@ -269,14 +284,12 @@ void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 	}
 	fclose(writeFile); 
 	fclose(readFile); 
-	MPI_Finalize();
-}
-*/
+}*/
 int main(int argc, char *argv[])
 {
 	fencrypt("lorem.txt", "enced.txt", (unsigned const char*)"1234567812345678");
 	printf("Encrypted.\n");
-	//fdecrypt("enced.txt", "unenced.txt", (unsigned const char*)"1234567812345678");
+	//fdecrypt((unsigned const char*)"1234567812345678");
 	printf("Done.\n");
 	MPI_Finalize();
 	return 0;
