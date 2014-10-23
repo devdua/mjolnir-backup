@@ -18,6 +18,32 @@ struct ctr_state
 	unsigned int num; 
 	unsigned char ecount[AES_BLOCK_SIZE]; 
 };
+char *substring(char *string, int position, int length) 
+{
+   char *pointer;
+   int c;
+ 
+   pointer = malloc(length+1);
+ 
+   if (pointer == NULL)
+   {
+      printf("Unable to allocate memory.\n");
+      exit(EXIT_FAILURE);
+   }
+ 
+   for (c = 0 ; c < position -1 ; c++) 
+      string++; 
+ 
+   for (c = 0 ; c < length ; c++)
+   {
+      *(pointer+c) = *string;      
+      string++;   
+   }
+ 
+   *(pointer+c) = '\0';
+ 
+   return pointer;
+}
 /*
 static void ctr128_inc(unsigned char *counter, int rank) {
 	u32 n=16;
@@ -112,14 +138,19 @@ void init_IV()
 		fprintf(stderr, "Could not create random bytes.");
 		exit(1);    
 	}
-	FILE *wFile = fopen("iv.txt","w");
+	char fname[7], rankChar[1];
+	rankChar[0] = (char)(((int)'0')+rank);
+	strcpy(fname, "iv");
+	strcat(fname, rankChar);
+	strcat(fname, ".txt");
+	FILE *wFile = fopen(fname,"w");
 	fwrite(iv, 1, 8, wFile); // IV bytes 1 - 8
     fwrite("\0\0\0\0\0\0\0\0", 1, 8, wFile); // Fill the last 4 with null bytes 9 - 16
     printf("IV Write Done : %s\n", iv);
     fclose(wFile);
-    wFile = fopen("iv_slaves.txt","w");
-    fwrite(iv, 1, AES_BLOCK_SIZE, wFile);
-    fclose(wFile);
+    // wFile = fopen("iv_slaves.txt","w");
+    // fwrite(iv, 1, AES_BLOCK_SIZE, wFile);
+    // fclose(wFile);
 }
 int sz;
 void fencrypt(char* read, char* write, const unsigned char* enc_key)
@@ -137,7 +168,18 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	int i = 0;
-	if (rank == 0)
+	char fname[11], rankChar[1];
+	rankChar[0] = (char)(((int)'0')+rank);
+	strcpy(fname, "block");
+	strcat(fname, rankChar);
+	strcat(fname, ".txt");
+	printf("File Name : %s\n", fname);
+	fp = fopen(fname,"w+");
+
+	char writeBuffer[(sz/size)+1];
+	//FILE *src = fopen("lorem.txt", "r");
+	//int bytes = fread(writeBuffer,1,buf,src);
+	/*if (rank == 0)
 	{
 		init_IV();
 		init_ctr(&state, iv);
@@ -153,28 +195,48 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 	else{
 		MPI_Recv(&state, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		MPI_Recv(&iv, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	}
-	MPI_File_open(MPI_COMM_WORLD,read,MPI_MODE_RDONLY,MPI_INFO_NULL,&readFile);
-	MPI_File_open(MPI_COMM_WORLD,write,MPI_MODE_CREATE|MPI_MODE_WRONLY,MPI_INFO_NULL,&writeFile);
+	}*/
+	MPI_File_open(MPI_COMM_WORLD,"lorem.txt",MPI_MODE_RDONLY,MPI_INFO_NULL,&readFile);
+	//MPI_File_open(MPI_COMM_WORLD,fname,MPI_MODE_CREATE|MPI_MODE_WRONLY,MPI_INFO_NULL,&writeFile);
 	//init_ctr(&state, iv); //Counter call
+	float blocksize = sz/size;
+	//int numblocks = blocks*AES_BLOCK_SIZE;
+	if (rank == 0)
+	{
+		printf("Size of file : %d\n", sz);
+	}
+	printf("Blocksize : %f, numblocks : %d\n", blocksize, size);
+	init_IV();
+	init_ctr(&state, iv);
 	int partition = ((sz/AES_BLOCK_SIZE)/size);
 	int blockOffset = partition*AES_BLOCK_SIZE;
-	printf("PARTITION SIZE : %d\n", partition);
+	//printf("PARTITION SIZE : %d\n", partition);
 	int j;
+	MPI_File_read_at(readFile,(rank*blocksize),writeBuffer,(blocksize),MPI_CHAR,&status);
+	//strcat(writeBuffer,"\0");
+	int b = 0;
+	for (b = 0; b < blocksize; b += AES_BLOCK_SIZE)
+	{
+	encrypt(substring(writeBuffer,b,AES_BLOCK_SIZE), outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt,rank);
+	fwrite(outdata,1,AES_BLOCK_SIZE,fp);
+	}
+	//MPI_File_write_at(writeFile, ((rank)*blocksize), writeBuffer, blocksize, MPI_CHAR, &status);
+	printf("For process %d writeBuffer : %s\n", rank,writeBuffer);
+
 	// if(rank != 0)
 	// {
 	// 	FILE *f = fopen("iv_slaves.txt", "r");
 	// 	fread(iv, 1, AES_BLOCK_SIZE, f);
 	// 	fclose(f);
 	// }
-	for(i = 0; i < blockOffset; i += AES_BLOCK_SIZE)
+	/*for(i = 0; i < blockOffset; i += AES_BLOCK_SIZE)
 	{
 		MPI_File_read_at(readFile, ((rank)*blockOffset)+i, indata, AES_BLOCK_SIZE, MPI_CHAR, &status);
 		encrypt(indata, outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num,(block128_f)AES_encrypt,rank);
-		printf("ivec : %s, ecount : %s\n", state.ivec, state.ecount);
+		//printf("ivec : %s, ecount : %s\n", state.ivec, state.ecount);
 		MPI_File_write_at(writeFile, ((rank)*blockOffset)+i, outdata, AES_BLOCK_SIZE, MPI_CHAR, &status);
-	}
-	MPI_File_close(&writeFile);
+	}*/
+	//MPI_File_close(&writeFile);
 	MPI_File_close(&readFile);
 }
 /*
