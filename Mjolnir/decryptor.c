@@ -95,6 +95,7 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 void fdecrypt(char* read, char* iv, char* write, const unsigned char* enc_key)
 {	
 
+	printf("Started %d\n", rank);
 	readFile=fopen(read,"rb"); // The b is required in windows.
 	FILE *ivr = fopen(iv, "r");
 	writeFile=fopen(write,"wb");
@@ -126,8 +127,8 @@ void fdecrypt(char* read, char* iv, char* write, const unsigned char* enc_key)
 	while(1) 	
 	{
 		bytes_read = fread(indata, 1, AES_BLOCK_SIZE, readFile);	
-        //printf("%i\n", state.num);
 		AES_ctr128_encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num);
+		printf("outdata : %s\n", outdata);
 
 		bytes_written = fwrite(outdata, 1, bytes_read, writeFile); 
 		if (bytes_read < AES_BLOCK_SIZE) 
@@ -138,12 +139,12 @@ void fdecrypt(char* read, char* iv, char* write, const unsigned char* enc_key)
 	fclose(writeFile); 
 	fclose(readFile); 
 }
-void getProcessName(char element[], char root[], char rank[])
+/*void getProcessName(char element[], char root[], char rank[])
 {
 	strcpy(element, root);
 	strcat(element, rank);
 	strcat(element, ".txt");
-}
+}*/
 int main(int argc, char *argv[])
 {
 	//fencrypt("lorem.txt", "enced.txt", (unsigned const char*)"1234567812345678");
@@ -151,17 +152,19 @@ int main(int argc, char *argv[])
 	MPI_Init(NULL,NULL);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	char blockname[11], ivname[7], destination[10], rankChar[1];
+	char blockname[11], ivname[7], destination[9], rankChar[1];
 	int i = 0;
-	for (i = 0; i < size; ++i)
-	{
-		rankChar[0] = (char)(((int)'0')+rank);
-		getProcessName(blockname,"block",rankChar);
-		getProcessName(ivname,"iv",rankChar);
-		getProcessName(destination,"decr",rankChar);	
-		fdecrypt(blockname, ivname, destination, (unsigned const char*)"1234567812345678");
-	}
+	rankChar[0] = (char)(((int)'0')+rank);
+	// getProcessName(blockname,"block",rankChar);
+	// getProcessName(ivname,"iv",rankChar);
+	// getProcessName(destination,"decr",rankChar);    
+	sprintf(blockname, "block%d.txt", rank);
+	sprintf(ivname, "iv%d.txt", rank);
+	sprintf(destination, "decr%d.txt", rank);
+	printf("Process %d decrypting %s %s %s\n", rank, blockname, ivname, destination);
+	fdecrypt(blockname,ivname,destination, (unsigned const char*)"1234567812345678");
 	printf("Done.\n");
 	MPI_Finalize();
 	return 0;
+
 }
