@@ -40,64 +40,13 @@ int init_ctr(struct ctr_state *state, const unsigned char iv[16])
     /* Copy IV into 'ivec' */
 	memcpy(state->ivec, iv, 8);
 }
-/*
-void fencrypt(char* read, char* write, const unsigned char* enc_key)
-{ 
-	if(!RAND_bytes(iv, AES_BLOCK_SIZE))
-	{
-		fprintf(stderr, "Could not create random bytes.");
-		exit(1);    
-	}
-
-	readFile = fopen(read,"rb"); // The b is required in windows.
-	writeFile = fopen(write,"wb");
-	
-	if(readFile==NULL) 	
-	{
-		fprintf(stderr, "Read file is null."); 
-		exit(1);
-	}
-	
-	if(writeFile==NULL)
-	{
-		fprintf(stderr, "Write file is null."); 
-		exit(1);
-	}
-	
-	fwrite(iv, 1, 8, writeFile); // IV bytes 1 - 8
-    fwrite("\0\0\0\0\0\0\0\0", 1, 8, writeFile); // Fill the last 4 with null bytes 9 - 16
-    printf("IV Write: %s\n", iv);
-	//Initializing the encryption KEY
-    if (AES_set_encrypt_key(enc_key, 128, &key) < 0)
-    {
-    	fprintf(stderr, "Could not set encryption key.");
-    	exit(1); 
-    }
-
-	init_ctr(&state, iv); //Counter call
-	//Encrypting Blocks of 16 bytes and writing the output.txt with ciphertext	
-	while(1) 	
-	{
-		bytes_read = fread(indata, 1, AES_BLOCK_SIZE, readFile); 
-		AES_ctr128_encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num);
-
-		bytes_written = fwrite(outdata, 1, bytes_read, writeFile); 
-		if (bytes_read < AES_BLOCK_SIZE)
-		{
-			break;
-		}
-	}
-	
-	fclose(writeFile);
-	fclose(readFile);
-}
-*/
-void fdecrypt(char* read, char* write, const unsigned char* enc_key)
+void fdecrypt(char* read, char* iv, char* write, const unsigned char* enc_key)
 {	
 
-	readFile=fopen("block1.txt","rb"); // The b is required in windows.
-	FILE *ivr = fopen("iv1.txt", "r");
-	writeFile=fopen("unenced.txt","wb");
+	printf("Started %d\n", rank);
+	readFile=fopen(read,"rb"); // The b is required in windows.
+	FILE *ivr = fopen(iv, "r");
+	writeFile=fopen(write,"wb");
 	
 	if(readFile==NULL)
 	{
@@ -126,8 +75,8 @@ void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 	while(1) 	
 	{
 		bytes_read = fread(indata, 1, AES_BLOCK_SIZE, readFile);	
-        //printf("%i\n", state.num);
 		AES_ctr128_encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num);
+		printf("outdata : %s\n", outdata);
 
 		bytes_written = fwrite(outdata, 1, bytes_read, writeFile); 
 		if (bytes_read < AES_BLOCK_SIZE) 
@@ -138,11 +87,56 @@ void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 	fclose(writeFile); 
 	fclose(readFile); 
 }
+void congregate(int size)
+{
+	char source[9];
+	FILE *f = fopen("decrypted.txt", "w+");
+	FILE *in;
+	int i = 0;
+	for (i = 0; i < size; ++i)
+	{
+		sprintf(source, "decr%d.txt", i);
+		in = fopen(source, "r");
+		while(1) 	
+		{
+			bytes_read = fread(indata, 1, AES_BLOCK_SIZE, in);
+			printf("Indata : %s\n", indata);	
+			//AES_ctr128_encrypt(indata, outdata, bytes_read, &key, state.ivec, state.ecount, &state.num);
+			//printf("outdata : %s\n", outdata);
+
+			bytes_written = fwrite(indata, 1, bytes_read, f); 
+			if (bytes_read < AES_BLOCK_SIZE) 
+			{
+				break;
+			}
+		}
+	}
+}
 int main(int argc, char *argv[])
 {
 	//fencrypt("lorem.txt", "enced.txt", (unsigned const char*)"1234567812345678");
-	printf("Encrypted.\n");
-	fdecrypt("enced.txt", "unenced.txt", (unsigned const char*)"1234567812345678");
+	printf("Decryption initiated.\n");
+	MPI_Init(NULL,NULL);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	char blockname[11], ivname[7], destination[9], rankChar[1];
+	int i = 0;
+	rankChar[0] = (char)(((int)'0')+rank);
+	// getProcessName(blockname,"block",rankChar);
+	// getProcessName(ivname,"iv",rankChar);
+	// getProcessName(destination,"decr",rankChar);    
+	sprintf(blockname, "block%d.txt", rank);
+	sprintf(ivname, "iv%d.txt", rank);
+	sprintf(destination, "decr%d.txt", rank);
+	printf("Process %d decrypting %s %s %s\n", rank, blockname, ivname, destination);
+	fdecrypt(blockname,ivname,destination, (unsigned const char*)"1234567812345678");
+	if(rank == 0) 
+	{
+		printf("Congregating...\n");
+		congregate(size);
+	}
 	printf("Done.\n");
+	MPI_Finalize();
 	return 0;
+
 }

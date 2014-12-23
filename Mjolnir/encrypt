@@ -1,0 +1,17 @@
+#!/bin/bash
+echo "Synchronizing nodes.."
+scp $1.c acl@acl05:MPICluster/Mjolnir/
+scp $1.c acl@acl06:MPICluster/Mjolnir/
+echo "---------------------------------------------------"
+echo "Compiling.."
+mpicc -o $1 $1.c -lm -lssl -lcrypto
+scp $1 acl@acl05:MPICluster/Mjolnir/
+scp $1 acl@acl05:MPICluster/Mjolnir/
+echo "Compilation done."
+echo "---------------------------------------------------"
+echo "Running MPI job.."
+mpirun --hostfile host_file -np $2 $1 $3
+echo "---------------------------------------------------"
+echo "Synchronizing nodes.."
+scp iv*.txt acl@acl05:MPICluster/Mjolnir/
+scp block*.txt acl@acl05:MPICluster/Mjolnir/

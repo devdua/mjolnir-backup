@@ -1,0 +1,2 @@
+mpicc -o $1 $1.c -lssl -lm -lcrypto
+mpirun $1 $2

@@ -1,0 +1,17 @@
+#!/bin/bash
+echo "Synchronizing nodes.."
+unison -batch -prefer newer -times=true ../Mjolnir ssh://acl@acl06/MPICluster/Mjolnir
+unison -batch -prefer newer -times=true ../Mjolnir ssh://acl@acl05/MPICluster/Mjolnir
+echo "---------------------------------------------------"
+echo "Compiling.."
+mpicc -o $1 $1.c -lm -lssl -lcrypto
+echo "Compilation done."
+echo "---------------------------------------------------"
+echo "Synchronizing nodes.."
+unison -batch -prefer newer -times=true ../Mjolnir ssh://acl@acl06/MPICluster/Mjolnir
+unison -batch -prefer newer -times=true ../Mjolnir ssh://acl@acl05/MPICluster/Mjolnir
+echo "---------------------------------------------------"
+echo "Running MPI job.."
+mpirun --hostfile host_file -np $2 $1
+unison -batch -prefer newer -times=true ssh://acl@acl06/MPICluster/Mjolnir ../Mjolnir
+unison -batch -prefer newer -times=true ssh://acl@acl05/MPICluster/Mjolnir ../Mjolnir

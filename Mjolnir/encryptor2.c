@@ -11,7 +11,6 @@
 #include <math.h>
 #include "mpi.h"
 #include <openssl/modes.h>
-#include <omp.h>
 int rank, size, bufsize, nints, bytes_read, bytes_written;
 double wtime;	 
 struct ctr_state 
@@ -140,12 +139,9 @@ void fencrypt(char* read, const unsigned char* enc_key)
 	}
 	MPI_File_read_at(readFile,(rank*blocksize),writeBuffer,(blocksize),MPI_CHAR,&status);
 	int b = 0;
-	char * substr;
-	for (; b < blocksize; b += AES_BLOCK_SIZE)//
+	for (; b < blocksize; b += AES_BLOCK_SIZE)
 	{
-		//substr = substring(writeBuffer,b,AES_BLOCK_SIZE);
-		strncpy(substr,writeBuffer+b,AES_BLOCK_SIZE);
-		AES_ctr128_encrypt(susbtr, outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num);
+		AES_ctr128_encrypt(substring(writeBuffer,b,AES_BLOCK_SIZE), outdata, AES_BLOCK_SIZE, &key, state.ivec, state.ecount, &state.num);
 		fwrite(outdata,1,AES_BLOCK_SIZE,fp);
 	}
 	//printf("For process %d writeBuffer : %s\n", rank,writeBuffer);

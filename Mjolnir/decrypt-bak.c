@@ -95,8 +95,8 @@ void fencrypt(char* read, char* write, const unsigned char* enc_key)
 void fdecrypt(char* read, char* write, const unsigned char* enc_key)
 {	
 
-	readFile=fopen("block1.txt","rb"); // The b is required in windows.
-	FILE *ivr = fopen("iv1.txt", "r");
+	readFile=fopen("enced.txt","rb"); // The b is required in windows.
+	FILE *ivr = fopen("iv.txt", "r");
 	writeFile=fopen("unenced.txt","wb");
 	
 	if(readFile==NULL)

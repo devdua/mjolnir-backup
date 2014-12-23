@@ -1,0 +1,2 @@
+mpirun -np $3 --hostfile host_file $1 $2
+sh decrypt decryptor $3

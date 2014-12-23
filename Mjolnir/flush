@@ -1,0 +1,4 @@
+#!/bin/bash
+rm block*.txt
+rm iv*.txt
+rm decr*.txt
